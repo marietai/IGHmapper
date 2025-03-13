@@ -2,3 +2,9 @@
 *.bim
 *.fam
 my_genotype_data/
+*.log
+*.eigenval
+*.eigenvec
+*.bash_history
+*.wget-hsts
+*.bashrc
