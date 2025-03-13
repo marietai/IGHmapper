@@ -1,0 +1,4 @@
+*.bed
+*.bim
+*.fam
+my_genotype_data/
