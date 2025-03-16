@@ -8,3 +8,9 @@ my_genotype_data/
 *.bash_history
 *.wget-hsts
 *.bashrc
+*.id
+*.smiss
+*.vmiss
+*.acount
+*.het
+*.x
