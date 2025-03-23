@@ -1,0 +1,67 @@
+
+# Check Missingness
+plink2 --bfile /raw/data/here\
+       --missing \
+       --out /missingness of both individuals and SNPs\
+
+# Remove Individuals with High Missingness (>2%)
+
+plink2 --bfile /raw/data/here\
+       --mind 0.02 \
+       --make-bed \
+       --out /a flie with removed individuals exceeding a certain missing genotype call rate
+
+
+# Remove SNPs with missingness >2%:
+plink2 --bfile /a flie with removed individuals exceeding a certain missing genotype call rate\
+       --geno 0.02 \
+       --make-bed \
+       --out /a flie with removed SNPs exceeding a certain missing genotype call rate
+
+# Perform LD pruning
+plink2 --bfile /previous data path\
+       --indep-pairwise 50 5 0.2 \
+       --out /SNPs that passed LD pruning.
+
+plink2 --bfile /previous data path\
+       --extract /SNPs that passed LD pruning\
+       --make-bed \
+       --out /LDpruned_data
+
+#het Check
+plink --bfile /rds/general/user/wt1224/home/IG-heavy-chain-/Clean_Data/LDpruned_data \
+      --het \
+      --out /rds/general/user/wt1224/home/IG-heavy-chain-/Clean_Data/LDpruned_data_het
+
+# inspect F values
+cd /rds/general/user/wt1224/home/IG-heavy-chain-/Clean_Data
+awk '{print $1, $2, $6}' LDpruned_data_het.het | sort -k3n
+
+
+# Calculate sample missingness
+plink --bfile /rds/general/user/wt1224/home/IG-heavy-chain-/my_genotype_data/GoalPost_hg19 \
+      --missing \
+      --out /rds/general/user/wt1224/home/IG-heavy-chain-/QC/GoalPost_raw_missing
+
+
+# Calculate heterozygosity
+plink --bfile /rds/general/user/wt1224/home/IG-heavy-chain-/my_genotype_data/GoalPost_hg19 \
+      --het \
+      --out /rds/general/user/wt1224/home/IG-heavy-chain-/QC/GoalPost_raw_het
+
+
+library(Cairo)
+
+# Plot Missingness vs Heterozygosity in R
+CairoPNG("/rds/general/user/wt1224/home/IG-heavy-chain-/QC/missingness_vs_het_log10.png", width=800, height=600)
+
+# Plot with log10 x-axis
+plot(log10(df$F_MISS), df$F,
+     xlab="log10(Missingness)",
+     ylab="Inbreeding Coefficient (F)",
+     main="log10(Missingness) vs Heterozygosity",
+     pch=20, col="blue")
+abline(h=0, col="red", lty=2)
+grid()
+
+dev.off()
