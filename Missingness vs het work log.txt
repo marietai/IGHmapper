@@ -1,0 +1,94 @@
+Get high LD regions from https://genome.sph.umich.edu/w/index.php?title=Regions_of_high_linkage_disequilibrium_(LD)&action=edit
+
+# Exclude high-LD regions (hg38) 
+plink2 --bfile "C:\Users\marietai\Desktop\GoalPost\GP\GoalPost_hg38" ^
+--exclude range "C:\Users\marietai\Desktop\GoalPost\GP\high_ld_regions_hg38.bed" ^
+
+# LD Pruning
+--indep-pairwise 50 5 0.2 ^
+--out "C:\Users\marietai\Desktop\GoalPost\GP\GoalPost_pruned_noHighLD"
+
+# Create a pruned dataset
+plink2 --bfile "C:\Users\marietai\Desktop\GoalPost\GP\GoalPost_hg38" ^
+--extract "C:\Users\marietai\Desktop\GoalPost\GP\GoalPost_pruned_noHighLD.prune.in" ^
+--make-bed --out "C:\Users\marietai\Desktop\GoalPost\GP\GoalPost_LDpruned_noHighLD"
+
+
+# Check missingness and heterozygosity
+plink2 --bfile "C:\Users\marietai\Desktop\GoalPost\GP\GoalPost_LDpruned_noHighLD" ^
+--missing --out "C:\Users\marietai\Desktop\GoalPost\GP\GoalPost_LDpruned_noHighLD"
+
+plink2 --bfile "C:\Users\marietai\Desktop\GoalPost\GP\GoalPost_LDpruned_noHighLD" ^
+--het --out "C:\Users\marietai\Desktop\GoalPost\GP\GoalPost_LDpruned_noHighLD"
+
+--------------------------------------------
+## Plot with R
+-----------------------------------------------
+library(ggplot2)
+library(GGally)
+library(dplyr)
+library(readr)
+library(ggrepel)
+
+# Read files
+smiss <- read_table("C:/Users/marietai/Desktop/GoalPost/GP/GoalPost_LDpruned_noHighLD.smiss") %>%
+  rename(FID = `#FID`)
+
+het <- read_table("C:/Users/marietai/Desktop/GoalPost/GP/GoalPost_LDpruned_noHighLD.het") %>%
+  rename(FID = `#FID`)
+
+# Merge and compute values
+merged <- inner_join(smiss, het, by = c("FID", "IID")) %>%
+  mutate(
+    log10_missing = log10(F_MISS),
+    F_inbreeding = F
+  )
+
+plot_data <- merged %>%
+  select(log10_missing, F_inbreeding)
+
+# Custom lower panel with h=0 line
+custom_lower <- function(data, mapping, ...) {
+  ggplot(data = data, mapping = mapping) +
+    geom_point(alpha = 0.7) +
+    geom_smooth(method = "lm", se = FALSE, size = 0.7, color = "blue", ...) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+    theme_minimal()
+}
+
+# Identify outliers: ±3 SD
+mean_log10miss <- mean(merged$log10_missing, na.rm = TRUE)
+sd_log10miss <- sd(merged$log10_missing, na.rm = TRUE)
+
+mean_F <- mean(merged$F_inbreeding, na.rm = TRUE)
+sd_F <- sd(merged$F_inbreeding, na.rm = TRUE)
+
+merged <- merged %>%
+  mutate(
+    is_outlier = abs(log10_missing - mean_log10miss) > 3 * sd_log10miss |
+                 abs(F_inbreeding - mean_F) > 3 * sd_F
+  )
+
+# Update the plot with PC1–PC6
+p <- ggpairs(
+  pca,
+  columns = 3:8,  # PC1 to PC6
+  mapping = aes(color = Origin),
+  upper = list(continuous = wrap("points", alpha = 0.6, size = 0.8)),
+  lower = list(continuous = wrap("points", alpha = 0.6, size = 0.8)),
+  diag = list(continuous = wrap("densityDiag", alpha = 0.4))
+)
+
+# Force legend on all subplots
+for(i in 1:p$ncol) {
+  for(j in 1:p$nrow) {
+    p[i, j] <- p[i, j] + theme(legend.position = "right")
+  }
+}
+
+# View or save
+print(p)
+
+# Optional: save to file
+ggsave("C:/Users/marietai/Desktop/GoalPost/GP+1000G/pca_ggpairs_PC6.png",
+       plot = p, width = 14, height = 14, dpi = 300)

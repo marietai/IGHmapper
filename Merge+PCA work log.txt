@@ -1,0 +1,160 @@
+# Rename variant IDs to uniform format chr_bp_allele1_allele2
+## for 1000G, skip problematic variants with long alleles
+plink2 --pfile "C:\Users\marietai\Desktop\GoalPost\1000G\all_hg38" ^
+  --set-all-var-ids '@:#\$r_\$a' ^
+  --new-id-max-allele-len 20 missing ^
+  --make-pgen --out 1000G_renamed
+
+###fix
+plink2 --pfile 1000G_renamed ^
+  --extract GoalPost_vars.snplist ^
+  --set-all-var-ids @:#\$r_\$a ^
+  --new-id-max-allele-len 100 missing ^
+  --make-pgen --out 1000G_filtered
+
+## Exclude variants with ID = '.' from 1000G_filtered_bed
+Get-Content 1000G_filtered_bed.bim | Where-Object { ($_ -split "\t")[1] -eq "." } | ForEach-Object { ($_ -split "\t")[1] } > remove_dot_variants.txt
+plink2 --bfile 1000G_filtered_bed --exclude remove_dot_variants.txt --make-bed --out 1000G_clean
+
+## Exclude variants with ID = '.' from Goal Post renamed
+Get-Content GoalPost_renamed.bim | Where-Object { ($_ -split "\t")[1] -eq "." } | ForEach-Object { ($_ -split "\t")[1] } > goalpost_remove_dot.txt
+plink2 --bfile GoalPost_renamed --exclude goalpost_remove_dot.txt --make-bed --out GoalPost_clean
+
+##Rename GoalPost variant IDs
+plink2 --bfile "C:\Users\marietai\Desktop\GoalPost\GP\GoalPost_hg38" ^
+  --set-all-var-ids @:#\$r_\$a ^
+  --new-id-max-allele-len 20 missing ^
+  --make-bed --out GoalPost_renamed
+
+## remove duplicates
+plink2 --bfile GoalPost_clean --rm-dup exclude-all --make-bed --out GoalPost_nodup
+
+
+
+
+#Get list of variant positions from GoalPost
+plink2 --bfile 1000G_clean --write-snplist --out 1000G_vars
+plink2 --bfile GoalPost_nodup --write-snplist --out goalpost_vars
+
+# Compare SNPs and save overlaps
+# Load SNP lists
+with open("GoalPost_vars.snplist", "r") as f:
+    snps_goalpost = set(line.strip() for line in f if line.strip())
+
+with open("1000G_vars.snplist", "r") as f:
+    snps_1000G = set(line.strip() for line in f if line.strip())
+
+# Find intersection
+shared_snps = snps_goalpost.intersection(snps_1000G)
+
+# Save to shared.snplist
+with open("shared.snplist", "w") as out:
+    for snp in sorted(shared_snps):
+        out.write(snp + "\n")
+
+print(f"Shared SNPs: {len(shared_snps)} written to shared.snplist")
+
+plink2 --bfile GoalPost_nodup --extract shared.snplist --make-bed --out GoalPost_overlap
+plink2 --bfile 1000G_clean --extract shared.snplist --make-bed --out 1000G_overlap
+
+# Merge
+echo 1000G_overlap.bed 1000G_overlap.bim 1000G_overlap.fam > mergelist.txt
+plink1.9 --bfile GoalPost_overlap --merge-list mergelist.txt --make-bed --out merged_overlap
+
+# QC 
+plink2 --bfile merged_overlap ^
+       --geno 0.05 --maf 0.05 --mind 0.05 ^
+       --make-bed --out merged_QC
+
+# LD Pruning
+plink2 --bfile merged_QC ^
+       --indep-pairwise 50 5 0.2 ^
+       --out pruned
+
+plink2 --bfile merged_QC ^
+       --extract pruned.prune.in ^
+       --make-bed --out merged_pruned
+
+# PCA
+plink2 --bfile merged_pruned --pca 10 --out pca_results
+
+----------------------------------------------------------------------
+Step	Total Samples	GoalPost	1000G	Variants
+Merged (before QC)	3742	540	3202	553399
+After --geno 0.05	3742	540	3202	552989
+After --maf 0.05	3742	540	3202	265189
+After --mind 0.05	3598	530	3068	265189
+------------------------------------------
+
+#Plot in R
+library(GGally)
+library(tidyverse)
+library(ggplot2)
+
+# Load PCA
+pca <- read.table("pca_results.eigenvec", header = FALSE)
+colnames(pca) <- c("FID", "IID", paste0("PC", 1:10))
+
+# Load .fam to assign origin labels
+fam <- read.table("merged_overlap.fam", header = FALSE)
+colnames(fam) <- c("FID", "IID", "PID", "MID", "SEX", "PHENO")
+fam$Origin <- ifelse(fam$FID == "GoalPost", "GoalPost", "1000G")
+
+# Merge PCA with origin info
+pca <- merge(pca, fam[, c("FID", "IID", "Origin")], by = c("FID", "IID"))
+table(pca$Origin)
+
+# Ensure Origin is a factor for color mapping
+pca$Origin <- factor(pca$Origin, levels = c("GoalPost", "1000G"))
+
+# Plot
+p <- ggpairs(
+  pca,
+  columns = 3:7,  # PC1 to PC5
+  mapping = aes(color = Origin),
+  upper = list(continuous = wrap("points", alpha = 0.6, size = 0.8)),
+  lower = list(continuous = wrap("points", alpha = 0.6, size = 0.8)),
+  diag = list(continuous = wrap("densityDiag", alpha = 0.4))
+)
+
+# Force legend to appear in all subplots
+for(i in 1:p$ncol) {
+  for(j in 1:p$nrow) {
+    p[i, j] <- p[i, j] + theme(legend.position = "right")
+  }
+}
+
+# Show the plot
+print(p)
+
+# Save plot
+ggsave("C:/Users/marietai/Desktop/GoalPost/GP+1000G/pca_ggpairs_with_legend.png",
+       plot = p, width = 12, height = 12, dpi = 300)
+
+#  Identify furthest GoalPost sample
+
+# Re-load PCA file
+pca <- read.table("pca_results.eigenvec", header = FALSE)
+colnames(pca) <- c("FID", "IID", paste0("PC", 1:10))
+
+# Re-load fam file to assign origin
+fam <- read.table("merged_QC.fam", header = FALSE)
+colnames(fam) <- c("FID", "IID", "PID", "MID", "SEX", "PHENO")
+fam$Origin <- ifelse(fam$FID == "GoalPost", "GoalPost", "1000G")
+
+# Merge to get origin
+pca <- merge(pca, fam[, c("FID", "IID", "Origin")], by = c("FID", "IID"))
+
+# Calculate Euclidean distance from the GoalPost centroid
+goalpost <- subset(pca, Origin == "GoalPost")
+goalpost$distance <- sqrt(rowSums(goalpost[, paste0("PC", 1:6)]^2))
+
+# Identify furthest GoalPost sample
+outlier <- goalpost[which.max(goalpost$distance), c("FID", "IID", paste0("PC", 1:6), "distance")]
+print(outlier)
+
+
+FID      IID       PC1       PC5  distance_to_target
+3494  GoalPost  3511802 -0.015820 -0.034723            0.000330
+
+

@@ -1,0 +1,14 @@
+# Filter missingness (variants and individuals)
+plink2 --bfile GoalPost_hg38 --geno 0.02 --mind 0.02 --make-bed --out GoalPost_clean
+
+# LD Pruning
+plink2 --bfile GoalPost_clean --indep-pairwise 50 5 0.2 --out GoalPost_prune
+
+# Create pruned dataset
+plink --bfile GoalPost_clean --extract GoalPost_prune.prune.in --make-bed --out GoalPost_final
+
+# PCA with PlateID
+plink2 --bfile GoalPost_final --pheno GoalPost_Plate.txt --pheno-name PlateID --pca 10 --out pca_with_plate
+
+# Association test between PlateID and SNPs
+plink2 --bfile GoalPost_final --pheno GoalPost_PlateID.txt --pheno-name Plate --glm allow-no-covars --out plate_assoc
