@@ -1,0 +1,101 @@
+# Identify the Loci Covered by igh_to_hg38.txt
+import pandas as pd
+
+# Load the map file
+map_file = r"C:\Users\marietai\Desktop\GoalPost\38_to_igh\igh_to_hg38.txt"
+map_df = pd.read_csv(map_file, sep="\t", header=None, names=["Chromosome", "GRCh38_Pos", "GRCh38_Allele", "IGH_Pos", "IGH_Allele"])
+
+# Display the minimum and maximum positions covered by this map file
+min_pos = map_df['GRCh38_Pos'].min()
+max_pos = map_df['GRCh38_Pos'].max()
+chromosome = map_df['Chromosome'].iloc[0]
+
+print(f"Loci covered by 'igh_to_hg38.txt': Chromosome {chromosome} from position {min_pos} to {max_pos}")
+
+
+####Loci covered by 'igh_to_hg38.txt': Chromosome chr14 from position 105860505 to 106883718###
+
+plink2 --bfile C:\Users\marietai\Desktop\GoalPost\38_to_igh\GoalPost_final_QCpassed --chr 14 --from-bp 105860505 --to-bp 106883718 --make-bed --out C:\Users\marietai\Desktop\GoalPost\38_to_igh\GoalPost_IGH_loci
+
+#Convert to custom reference
+import pandas as pd
+
+# Load the map file and standardize chromosome format
+map_file = r"C:\Users\marietai\Desktop\GoalPost\38_to_igh\igh_to_hg38.txt"
+map_df = pd.read_csv(map_file, sep="\t", header=None, names=["Chromosome", "GRCh38_Pos", "GRCh38_Allele", "IGH_Pos", "IGH_Allele"])
+map_df["Chromosome"] = map_df["Chromosome"].str.replace("chr", "", regex=False)
+
+# Load the original .bim file
+bim_file = r"C:\Users\marietai\Desktop\GoalPost\38_to_igh\GoalPost_IGH_loci.bim"
+bim_df = pd.read_csv(bim_file, sep="\t", header=None, names=["Chromosome", "SNP", "cM", "GRCh38_Pos", "Allele1", "Allele2"], dtype={"Chromosome": str})
+
+# Ensure the chromosome in .bim file is set to '14'
+bim_df['Chromosome'] = bim_df['Chromosome'].replace(['1'], '14')
+
+# Merge on Chromosome and Position
+merged_df = pd.merge(bim_df, map_df, how="left", left_on=["Chromosome", "GRCh38_Pos"], right_on=["Chromosome", "GRCh38_Pos"])
+
+# Check for successful merging
+if merged_df.empty:
+    print("Error: No matching positions found between .bim file and map file.")
+else:
+    print("Merge successful, proceeding with update.")
+    # Continue only if the merge was successful
+    merged_df["GRCh38_Pos"] = merged_df["IGH_Pos"].fillna(merged_df["GRCh38_Pos"]).astype(int)
+    merged_df["Allele1"] = merged_df["IGH_Allele"].fillna(merged_df["Allele1"])
+    merged_df["Allele2"] = merged_df["IGH_Allele"].fillna(merged_df["Allele2"])
+    
+    # Drop unnecessary columns and save the updated .bim file
+    output_bim_file = r"C:\Users\marietai\Desktop\GoalPost\38_to_igh\GoalPost_IGH_reference.bim"
+    merged_df[["Chromosome", "SNP", "cM", "GRCh38_Pos", "Allele1", "Allele2"]].to_csv(output_bim_file, sep="\t", index=False, header=False)
+    
+    print(f"Corrected .bim file saved to: {output_bim_file}")
+
+python C:\Users\marietai\Desktop\GoalPost\38_to_igh\convert_igh.py
+
+#Generating PLINK .bed and .fam Files Using Custom Reference .bim File
+plink2 --bfile C:\Users\marietai\Desktop\GoalPost\38_to_igh\GoalPost_IGH_loci --bim C:\Users\marietai\Desktop\GoalPost\38_to_igh\GoalPost_IGH_reference.bim --make-bed --out C:\Users\marietai\Desktop\GoalPost\38_to_igh\GoalPost_IGH_reference
+
+#Confirming SNP Mapping and Listing Successfully/Unsuccessfully Mapped Variants
+import pandas as pd
+
+# Load your custom reference .bim file
+custom_bim_file = r"C:\Users\marietai\Desktop\GoalPost\38_to_igh\GoalPost_IGH_reference.bim"
+custom_bim_df = pd.read_csv(custom_bim_file, sep="\t", header=None, names=["Chromosome", "SNP", "cM", "Position", "Allele1", "Allele2"])
+
+# Load the mapping file (igh_to_hg38.txt)
+map_file = r"C:\Users\marietai\Desktop\GoalPost\38_to_igh\igh_to_hg38.txt"
+map_df = pd.read_csv(map_file, sep="\t", header=None, names=["Chromosome", "GRCh38_Pos", "GRCh38_Allele", "IGH_Pos", "IGH_Allele"])
+map_df["Chromosome"] = map_df["Chromosome"].str.replace("chr", "", regex=False)
+
+# Convert positions to integer
+map_df["IGH_Pos"] = map_df["IGH_Pos"].astype(int)
+custom_bim_df["Position"] = custom_bim_df["Position"].astype(int)
+import pandas as pd
+
+# Load your custom reference .bim file
+custom_bim_file = r"C:\Users\marietai\Desktop\GoalPost\38_to_igh\GoalPost_IGH_reference.bim"
+custom_bim_df = pd.read_csv(custom_bim_file, sep="\t", header=None, names=["Chromosome", "SNP", "cM", "Position", "Allele1", "Allele2"])
+
+# Load the mapping file (igh_to_hg38.txt)
+map_file = r"C:\Users\marietai\Desktop\GoalPost\38_to_igh\igh_to_hg38.txt"
+map_df = pd.read_csv(map_file, sep="\t", header=None, names=["Chromosome", "GRCh38_Pos", "GRCh38_Allele", "IGH_Pos", "IGH_Allele"])
+map_df["Chromosome"] = map_df["Chromosome"].str.replace("chr", "", regex=False)
+
+# Convert positions to integer
+map_df["IGH_Pos"] = map_df["IGH_Pos"].astype(int)
+custom_bim_df["Position"] = custom_bim_df["Position"].astype(int)
+
+# Find successfully mapped SNPs (present in both .bim and mapping file)
+successfully_mapped = pd.merge(custom_bim_df, map_df, left_on=["Position"], right_on=["IGH_Pos"])
+
+# Find unsuccessfully mapped SNPs (present in .bim but not in mapping file)
+unsuccessfully_mapped = custom_bim_df[~custom_bim_df["Position"].isin(successfully_mapped["Position"])]
+
+# Save successfully and unsuccessfully mapped SNPs to separate files
+successfully_mapped.to_csv(r"C:\Users\marietai\Desktop\GoalPost\38_to_igh\successfully_mapped_variants.txt", sep="\t", index=False)
+unsuccessfully_mapped.to_csv(r"C:\Users\marietai\Desktop\GoalPost\38_to_igh\unsuccessfully_mapped_variants.txt", sep="\t", index=False)
+
+print("Successfully mapped variants saved to: successfully_mapped_variants.txt")
+print("Unsuccessfully mapped variants saved to: unsuccessfully_mapped_variants.txt")
+

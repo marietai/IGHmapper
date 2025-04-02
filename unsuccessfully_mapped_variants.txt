@@ -1,0 +1,2 @@
+Chromosome	SNP	cM	Position	Allele1	Allele2
+14	AX-519693729	0	106276145	G	A
