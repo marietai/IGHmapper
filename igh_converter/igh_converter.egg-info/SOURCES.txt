@@ -1,6 +1,0 @@
-setup.py
-igh_converter.egg-info/PKG-INFO
-igh_converter.egg-info/SOURCES.txt
-igh_converter.egg-info/dependency_links.txt
-igh_converter.egg-info/requires.txt
-igh_converter.egg-info/top_level.txt
