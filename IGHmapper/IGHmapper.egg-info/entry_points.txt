@@ -1,0 +1,5 @@
+[console_scripts]
+igh_convert = IGHmapper.igh_converter.conversion:convert_to_custom_reference
+igh_extract = IGHmapper.igh_converter.mapping:extract_region
+igh_identify = IGHmapper.igh_converter.mapping:identify_build
+igh_validate = IGHmapper.igh_converter.validation:validate_mapping

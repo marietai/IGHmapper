@@ -1,0 +1,17 @@
+LICENSE
+README.md
+setup.py
+IGHmapper/__init__.py
+IGHmapper.egg-info/PKG-INFO
+IGHmapper.egg-info/SOURCES.txt
+IGHmapper.egg-info/dependency_links.txt
+IGHmapper.egg-info/entry_points.txt
+IGHmapper.egg-info/requires.txt
+IGHmapper.egg-info/top_level.txt
+IGHmapper/igh_converter/__init__.py
+IGHmapper/igh_converter/conversion.py
+IGHmapper/igh_converter/igh_to_hg19.txt
+IGHmapper/igh_converter/igh_to_hg38.txt
+IGHmapper/igh_converter/mapping.py
+IGHmapper/igh_converter/utils.py
+IGHmapper/igh_converter/validation.py

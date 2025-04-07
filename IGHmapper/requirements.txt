@@ -1,0 +1,5 @@
+## Requirements
+
+- Python 3.8+
+- Pandas
+- PLINK or PLINK2 (must be installed and accessible in your system's PATH)

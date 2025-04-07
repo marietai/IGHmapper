@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: IGHmapper
+Version: 0.1
+Summary: A Python package for converting and validating SNPs using custom IGH reference files.
+Home-page: https://github.com/marietai/IGH
+Author: marietai
+License: MIT
+Requires-Python: >=3.6
+License-File: LICENSE
+Requires-Dist: pandas
+Dynamic: author
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
