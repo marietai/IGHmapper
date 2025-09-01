@@ -1,0 +1,8 @@
+{
+  "model_name": "RandomForest",
+  "target_ppv": 0.99,
+  "chosen_threshold": 0.858,
+  "pos_label": 0,
+  "class_index_used": 0,
+  "timestamp": "2025-08-18T23:56:12.925355"
+}
